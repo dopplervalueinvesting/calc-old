@@ -2,7 +2,6 @@
 
 import os
 import csv
-from array import array
 
 dir_analysis = os.getcwd()
 os.chdir('..')
@@ -11,118 +10,145 @@ dir_input = dir_doppler + '/input'
 dir_output = dir_doppler + '/output'
 os.chdir(dir_analysis)
 
-# Input: 2-D data array
-# Output: 1-D data array representing the (n_local+1) -th column of the input array
-def column (array_local, n_local):
-    array_transpose = zip (*array_local)
-    return array_transpose [n_local]
+# Input: 2-D data list
+# Output: 1-D data list representing the (n_local+1) -th column of the input list
+def column (list_local, n_local):
+    list_transpose = zip (*list_local)
+    return list_transpose [n_local]
 
-# Input: 2D data array
-# Output: 1D data array representing the (n_local+1) -th column of the input array, minus the first entry
-def column_data (array_local, n_local):
-    array1 = column (array_local, n_local)
-    array2 = array1 [1:]
-    return array2
+# Input: 2D data list
+# Output: 1D data list representing the (n_local+1) -th column of the input list, minus the first entry
+def column_data (list_local, n_local):
+    list1 = column (list_local, n_local)
+    list2 = list1 [1:]
+    return list2
 
-# Cuts off the first two entries of an array and then reverses it
+# Cuts off the first two entries of an list and then reverses it
 # Used to process the financial numbers in the stock data
 # The first column is the line item.  The second column is the code.
 # The numbers to process are in the rest of the data.
-# Input: 2-D data array
-# Output: 1-D data array representing the (n_local+1) -th row of the input array
-def row_rev (array_local, n_local):
-    array1 = array_local [n_local] # (n_local+1) -th row
-    array2 = array1 [2:]
-    array3 = array2 [::-1] # reverses array
-    return array3
+# Input: 2-D data list
+# Output: 1-D data list representing the (n_local+1) -th row of the input list
+def row_rev (list_local, n_local):
+    list1 = list_local [n_local] # (n_local+1) -th row
+    list2 = list1 [2:]
+    list3 = list2 [::-1] # reverses list
+    return list3
 
 # This defines the class CSVfile (filename).
 # Input: name of csv file
-# Output: 2-D array fed by the input file
+# Output: 2-D list fed by the input file
 class CSVfile:
     def __init__ (self, filename):
         self.filename = filename
 
-    def filearray (self):
-        localarray = []
+    def filelist (self):
+        locallist = []
         with open (self.filename, 'rb') as f:
             reader = csv.reader (f, delimiter = ',', quotechar = '"', quoting = csv.QUOTE_MINIMAL)
             for row in reader:
-                localarray.append (row)
-        return localarray
+                locallist.append (row)
+        return locallist
 
 # This defines the class Stock (symbol)
 # Input: stock symbol
-# Outputs: 2-D data array fed by the input file and 1-D data arrays
+# Outputs: 2-D data list fed by the input file and 1-D data lists
 class Stock:
     def __init__ (self, symbol):
         self.symbol = symbol
 
-    # Output: 2-D data array
+    # Input: stock file
+    # Output: 2-D data list
     def data (self):
         file_stock = CSVfile (dir_input + '/' + self.symbol + '.csv')
-        array_stock = file_stock.filearray ()
-        return array_stock
+        list_stock = file_stock.filelist ()
+        return list_stock
 
+    # Input: stock file
     # Output: string
     def name (self):
         file_companies = CSVfile (dir_input + '/company_list.csv')
-        array_companies = file_companies.filearray ()
-        list_symbols = column_data (array_companies, 0)
-        list_names = column_data (array_companies, 1)
+        list_companies = file_companies.filelist ()
+        list_symbols = column_data (list_companies, 0)
+        list_names = column_data (list_companies, 1)
         i_symbol = list_symbols.index(self.symbol)
         return list_names [i_symbol]
 
-    # Output: 1-D array of integers (top row, excluding the first two columns)
+    # Input: 2-D data list from data function
+    # Output: 1-D list of integers (top row, excluding the first two columns)
     def years (self):
-        array1 = self.data ()
-        array2 = row_rev (array1, 0)
-        return array2
+        list1 = self.data ()
+        list2 = row_rev (list1, 0)
+        return list2
 
-    # Output: 1-D array of integers (first column, excluding the top row)
+    # Input: 2-D data list from data function
+    # Output: 1-D list of integers (first column, excluding the top row)
     def lineitem_titles (self):
-        array1 = self.data ()
-        array2 = column_data (array1, 0)
-        return array2
+        list1 = self.data ()
+        list2 = column_data (list1, 0)
+        return list2
 
-    # Output: 2D array of integers
+    # Input: 2-D list from data function
+    # Output: 2-D list (3 columns)
     # First column: specific codes
     # Second column: general codes
     # Third column: signs, +1 or -1
     def lineitem_codes (self):
-        array1 = self.data ()
-        spec_local = column_data (array1, 1) # First column of stock data
-        finalarray = []
+        list1 = self.data ()
+        spec_local = column_data (list1, 1) # First column of stock data
+        finallist = []
         file_codes = CSVfile (dir_analysis + '/codes.csv')
-        array_codefile = file_codes.filearray ()
-        spec_codefile = column_data (array_codefile, 1)
-        gen_codefile = column_data (array_codefile, 3)
-        signs_codefile = column_data (array_codefile, 2)
-        r = 0
-        for item in spec_local: # Go through the specific codes in the stock data
-            i_spec = spec_codefile.index (item)
-            gen_local = gen_codefile [i_spec]
-            signs_local = signs_codefile [i_spec]
-            finalarray [r][0] = item
-            finalarray [r][1] = signs_local
-            finalarray [r][2] = gen_local
-            r = r + 1
-        return finalarray
+        list_codefile = file_codes.filelist ()
+        spec_codefile = column_data (list_codefile, 1)
+        gen_codefile = column_data (list_codefile, 3)
+        signs_codefile = column_data (list_codefile, 2)
+        local_spec_lineitems = spec_local
+        local_gen_lineitems = []
+        local_signs_lineitems = []
+        for item in local_spec_lineitems: # Go through the specific codes in the stock data
+            try:
+                i_spec = spec_codefile.index (item)
+                local_gen_lineitems.append (gen_codefile [i_spec])
+                local_signs_lineitems.append (signs_codefile [i_spec])
+            except:
+				local_gen_lineitems.append ('NoGen')
+				local_signs_lineitems.append ('0')
+        finallist = zip (local_spec_lineitems, local_signs_lineitems, local_gen_lineitems)
+        finallist = zip (finallist)
+        return finallist
 
-
+    # Input: 2-D list of strings and integers from lineitem_codes
+    # Output: 1-D list
+    def lineitem_spec (self):
+        list1 = self.lineitem_codes ()
+        locallist = column_data (column_data (list1, 0), 0)
+        return locallist
+    
+    # Input: 2-D list of strings and integers from lineitem_codes
+    # Output: 1-D list    
+    def lineitem_signs (self):
+        list1 = self.lineitem_codes ()
+        locallist = column_data (column_data (list1, 0), 1)
+        return locallist
         
+    # Input: 2-D list of strings and integers from lineitem_codes
+    # Output: 1-D list    
+    def lineitem_gen (self):
+        list1 = self.lineitem_codes ()
+        locallist = column_data (column_data (list1, 0), 2)
+        return locallist
 
 
 
-# stock_symbol = raw_input ('Enter the stock symbol of the company to analyze:\n')
 stock_symbol = 'fast'
+# stock_symbol = raw_input ('Enter the stock symbol of the company to analyze:\n')
 mystock = Stock (stock_symbol)
-# print mystock.data()
-print mystock.name()
-print mystock.years()
-# myyears= mystock.years()
-# print myyears [0]
-print mystock.lineitem_titles()
-print mystock.lineitem_codes()
+
+print mystock.lineitem_spec ()
+print mystock.lineitem_signs ()
+print mystock.lineitem_gen ()
+
+mysigns = mystock.lineitem_signs ()
+print mysigns
 
 

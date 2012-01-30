@@ -72,7 +72,7 @@
 71,"tax1",1,"tax_rate","federal income tax rate"
 72,"tax2",1,"tax_rate","state income tax rate"
 73,"tax3",1,"tax_rate","other income taxes"
-74,"ptearn",1,"pt_earn","pre-tax earnings"
+74,"pt_earn",1,"pt_earn","pre-tax earnings"
 75,"stat1",1,"stat_tax","statutory federal income taxes (excludes special credits and debits)"
 76,"stat2",1,"stat_tax","statutory state income taxes (excludes special credits and debits)"
 77,"stat3",1,"stat_tax","statutory other income taxes (excludes special credits and debits)"
