@@ -155,11 +155,12 @@ class Stock:
         return locallist
     
     # Input: 2-D list of strings and integers from lineitem_codes
-    # Output: 1-D list    
+    # Output: 1-D list of numbers
     def lineitem_signs (self):
         list1 = self.lineitem_codes ()
-        locallist = column_data (column_data (list1, 0), 1)
-        return locallist
+        list2 = column_data (column_data (list1, 0), 1)
+        list3 = string_to_float (list2)
+        return list3
         
     # Input: 2-D list of strings and integers from lineitem_codes
     # Output: 1-D list    
@@ -190,6 +191,7 @@ class Stock:
     # Input: 2-D data list from data function
     # Output: 2-D list of numbers (excluding the top row and first two columns)
     # Note also the reversal, which puts the most recent year last in the sequence
+    # Note that the strings are transformed into floating point numbers
     def lineitem_figures (self):
         list1 = self.data ()
         list3 = []
@@ -204,7 +206,8 @@ class Stock:
         list4 = string_to_float (list3)
         return list4
                 
-		         
+    
+        
 
 stock_symbol = 'fast'
 # stock_symbol = raw_input ('Enter the stock symbol of the company to analyze:\n')
@@ -219,8 +222,7 @@ myfigures = mystock.lineitem_figures ()
 mysplitf = mystock.split_f ()
 
 # print myfigures
-print mysplitf
-print myfigures
+
 
 
 
