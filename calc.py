@@ -2,6 +2,7 @@
 
 import os
 import csv
+import numpy
 
 dir_analysis = os.getcwd()
 os.chdir('..')
@@ -18,20 +19,22 @@ def column (list_local, n_local):
     return list_transpose [n_local]
 
 # Purpose: extract a given column from a 2-D list but omit the top row
-# Input: 2D data list
-# Output: 1D data list representing the (n_local+1) -th column of the input list, minus the first entry
+# Input: 2-D data list
+# Output: 1-D data list representing the (n_local+1) -th column of the input list, minus the first entry
 def column_data (list_local, n_local):
     list1 = column (list_local, n_local)
     list2 = list1 [1:]
     return list2
 
-# Purpose: count the number of columns in a 2-D list    
+# Purpose: count the number of columns in a 2-D list
+# Input: 2-D data list
+# Output: integer representing the number of columns of the 2-D list
 def num_of_columns (list_local):
     list_transpose = zip (*list_local)
     n_local = len (list_transpose)
     return n_local
 
-# Cuts off the first two entries of an list and then reverses it
+# Cuts off the first two entries of a list and then reverses it
 # Used to process the financial numbers in the stock data
 # The first column is the line item.  The second column is the code.
 # The numbers to process are in the rest of the data.
@@ -44,28 +47,18 @@ def row_rev (list_local, n_local):
     return list3
     
 # Converts a row of strings into floating point numbers
-# Input: 2-D list of strings
-# Output: 2-D list of floating point numbers
+# Input: 1-D list of strings
+# Output: 1-D list of floating point numbers
 def string_to_float (list_local):
-	# Row number = r + 1, range is r = 0 to r = last row number - 1
-	# Column number = c + 1, range is c = 0 to c = last column - 1
-    r_min = 0
-    r_max = len (list_local) - 1
-    c_min = 0
-    c_max = num_of_columns (list_local) - 1
     list1 = []
-    list2 = []
-    for r in xrange (r_min, r_max):
-        for c in xrange (c_min, c_max):
-            print r, c
-            item_string = list_local [r][c]
-            item_no_commas = item_string.replace(',', '')
-            try:
-                element = float (item_no_commas)
-            except:
-                element = None
-            list2.append (element)
-        list1.append (list2)
+    for item in list_local:
+        item1 = item
+        item2 = item1.replace (',', '')
+        try:
+            item3 = float (item2)
+        except:
+            item3 = None
+        list1.append (item3)
     return list1
 
 # This defines the class CSVfile (filename).
@@ -115,8 +108,9 @@ class Stock:
     # Output: 1-D list of integers (first column, excluding the top row)
     def lineitem_titles (self):
         list1 = self.data ()
-        list2 = column_data (list1, 0)
-        return list2
+        list2 = column_data (list1, 0) # Excludes the top row of the stock data file
+        list3 = list2 [2:] # Excludes the next 2 rows of the stock data file
+        return list3
 
     # Input: 2-D list from data function
     # Output: 2-D list (3 columns)
@@ -125,7 +119,7 @@ class Stock:
     # Third column: signs, +1 or -1
     def lineitem_codes (self):
         list1 = self.data ()
-        spec_local = column_data (list1, 1) # First column of stock data
+        spec_local = column_data (list1, 1) # First column of stock data, excludes the top row
         finallist = []
         file_codes = CSVfile (dir_analysis + '/codes.csv')
         list_codefile = file_codes.filelist ()
@@ -150,28 +144,28 @@ class Stock:
     # Input: 2-D list of strings and integers from lineitem_codes
     # Output: 1-D list
     def lineitem_spec (self):
-        list1 = self.lineitem_codes ()
-        locallist = column_data (column_data (list1, 0), 0)
+        list1 = self.lineitem_codes () # Excludes the top row
+        locallist = column_data (column_data (list1, 0), 0) # Excludes the next two rows
         return locallist
     
     # Input: 2-D list of strings and integers from lineitem_codes
-    # Output: 1-D list of numbers
+    # Output: 1-D array of numbers
     def lineitem_signs (self):
-        list1 = self.lineitem_codes ()
-        list2 = column_data (column_data (list1, 0), 1)
+        list1 = self.lineitem_codes () # Excludes the top row
+        list2 = column_data (column_data (list1, 0), 1) # Excludes the next two rows
         list3 = string_to_float (list2)
         return list3
         
     # Input: 2-D list of strings and integers from lineitem_codes
     # Output: 1-D list    
     def lineitem_gen (self):
-        list1 = self.lineitem_codes ()
-        locallist = column_data (column_data (list1, 0), 2)
+        list1 = self.lineitem_codes () # Excludes the top row
+        locallist = column_data (column_data (list1, 0), 2) # Excludes the next two rows
         return locallist
         
     # Purpose: extract the list of years
     # Input: 2-D data list from data function
-    # Output: 1-D list of integers (top row, excluding the first two columns)
+    # Output: 1-D list (top row, excluding the first two columns)
     # Note also the reversal, which puts the most recent year last in the sequence
     def years (self):
         list1 = self.data ()
@@ -180,13 +174,51 @@ class Stock:
         
     # Purpose: extract the split factor for each year
     # Input: 2-D data list from data function
-    # Output: 1-D list of numbers (2nd row, excluding the first two columns)
+    # Output: 1-D array of numbers (2nd row, excluding the first two columns)
     # Note also the reversal, which puts the most recent year last in the sequence
     def split_f (self):
         list1 = self.data ()
         list2 = row_rev (list1, 1) # Removes the first two columns, then reverses
-        list3 = [float(i) for i in list2]
+        list3 = string_to_float (list2)
         return list3
+        
+    # Purpose: extract the split factor for each year
+    # Input: 2-D data list from data function
+    # Output: 1-D list of numbers (3rd row, excluding the first two columns)
+    # Note also the reversal, which puts the most recent year last in the sequence
+    def unit_plus(self):
+        list1 = self.data ()
+        list2 = row_rev (list1, 2) # Removes the first two columns, then reverses
+        list3 = string_to_float (list2)
+        return list3
+                
+    # Purpose: extract the split factor for each year
+    # Input: 2-D data list from data function
+    # Output: 1-D list of numbers (4th row, excluding the first two columns) OR
+    # a 1-D list of zeros
+    # Note also the reversal, which puts the most recent year last in the sequence
+    def unit_minus (self):
+        list1 = self.data ()
+        list2 = row_rev (list1, 3) # Removes the first two columns, then reverses
+        if list1 [3][1] == 'un-':
+            list3 = string_to_float (list2)
+        else:
+            list3 = [0 for i in list2]
+        return list3
+
+    # Input: 1-D data list from lineitem_figures function
+    # Output: integer (number of rows in lineitem_figures)
+    def num_lineitems (self):
+		list1 = self.lineitem_spec ()
+		local_num = len (list1)
+		return local_num
+	
+	# Input: 1-D data list from years function
+    # Output: integer (number of rows in lineitem_figures)
+    def num_years (self):
+		list1 = self.years ()
+		local_num = len (list1)
+		return local_num
 
     # Input: 2-D data list from data function
     # Output: 2-D list of numbers (excluding the top row and first two columns)
@@ -194,35 +226,66 @@ class Stock:
     # Note that the strings are transformed into floating point numbers
     def lineitem_figures (self):
         list1 = self.data ()
-        list3 = []
-		# Row number = r + 1
+        # Row number = r + 1
 		# First row: r = 0
 		# Last row: r = total number of rows - 1
-        r_min = 2 # top row = year, 2nd row = split factor
-        r_max = len (list1) - 1
-        for r in xrange (r_min, r_max):
-            list2 = row_rev (list1, r) # Removes the first two columns, then reverses
-            list3.append (list2)
-        list4 = string_to_float (list3)
-        return list4
-                
-    
+        r_max_data = len (list1) -1
+        r_min_data = 3 # top row = year, 2nd row = split factor, 3rd row = unit (plus)
+        list2 = []
+        for r_data in xrange (r_min_data, r_max_data):
+            line1 = row_rev(list1, r_data) # Reverses, cuts off first two columns
+            list2.append (line1)
+        # list2 = data minus first two columns and first three rows
+        list3 = []
+        for line in list2:
+            line1 = line
+            line2 = string_to_float (line1)
+            list3.append (line2)
+        # list3 = list2 converted to floating point numbers
+        return list3    
+		
+    # Input: 1-D data list from years function
+    # Output: 1-D data list of liquid assets
+    def liquid_plus (self):
+        list1 = self.lineitem_gen ()
+        gen1 = self.lineitem_gen ()
+        figures1 = self.lineitem_figures ()
+        unitplus1 = self.unit_plus()
+        r_min = 0
+        r_max = self.num_years () - 1
+        yr_min = 0 
+        yr_max = self.num_years () - 1
+        liq_list = []
+        
+        #for yr in xrange (yr_min, yr_max):
+            #liq_local = 0
+            #for r in xrange (r_min, r_max):
+                #if gen1 [r] == 'liq':
+                    #try:
+                        #liq_local = liq_local + unitplus1 [r] * figures1 [r][yr]
+                    #except:
+                        #liq_local = None
+            #liq_list.append (liq_local)
+        #return liq_list
         
 
 stock_symbol = 'fast'
 # stock_symbol = raw_input ('Enter the stock symbol of the company to analyze:\n')
 mystock = Stock (stock_symbol)
+mydata = mystock.data ()
+mysigns = mystock.lineitem_signs()
+myfigures = mystock.lineitem_figures()
+mysplit = mystock.split_f ()
 
+myunitplus = mystock.unit_plus()
+myunitminus = mystock.unit_minus()
+# print mygen
+print mysigns
+print '\n\n'
+print mysplit
+print '\n\n'
 
-
-mysigns = mystock.lineitem_signs ()
-
-myfigures = mystock.lineitem_figures ()
-
-mysplitf = mystock.split_f ()
-
-# print myfigures
-
-
-
-
+print '\n\n'
+print myunitplus
+print '\n\n'
+print myfigures
