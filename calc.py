@@ -797,7 +797,7 @@ class Stock:
         c = c_min
         while c <= c_max:
             try:
-                if c==0:
+                if c - 1 < 0:
                     dollars = None
                 else:
                     dollars = .1 * list1 [c-1]
@@ -819,6 +819,28 @@ class Stock:
         while c <= c_max:
             try:
                 dollars = list1 [c] - list2 [c]
+            except:
+                dollars = None
+            list3.append (dollars)
+            c = c + 1
+        return list3
+
+    # Doppler ROE, return on PPE
+    # (free cash flow in year y divided by plant/property/equipment in year y-1)
+    def return_ppe (self):
+        list1 = self.dollars_fcf ()
+        list2 = self.dollars_ppec ()
+        list3 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                if c - 1 < 0:
+                    dollars = None
+                else:
+                    dollars = list1[c] / list2[c-1]
             except:
                 dollars = None
             list3.append (dollars)
@@ -869,3 +891,5 @@ mycap = mystock.dollars_cap ()
 print mycap
 myfcf = mystock.dollars_fcf ()
 print myfcf
+myroe = mystock.return_ppe ()
+print myroe
