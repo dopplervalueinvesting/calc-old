@@ -768,7 +768,7 @@ class Stock:
             c = c + 1
         return list1
 
-    # Cash flow (dollars)
+    # Cash flow ($)
     def dollars_cf (self):
         list1 = self.dollars_sales ()
         list2 = self.dollars_exp ()
@@ -786,7 +786,45 @@ class Stock:
             list4.append (dollars)
             c = c + 1
         return list4
-		
+
+    # Normalized capital spending ($)
+    def dollars_cap (self):
+        list1 = self.dollars_ppec ()
+        list2 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                if c==0:
+                    dollars = None
+                else:
+                    dollars = .1 * list1 [c-1]
+            except:
+                dollars = None
+            list2.append (dollars)
+            c = c + 1
+        return list2
+
+    # Free cash flow, unsmoothed ($)
+    def dollars_fcf (self):
+        list1 = self.dollars_cf ()
+        list2 = self.dollars_cap ()
+        list3 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list1 [c] - list2 [c]
+            except:
+                dollars = None
+            list3.append (dollars)
+            c = c + 1
+        return list3
+
 
 stock_symbol = 'fast'
 # stock_symbol = raw_input ('Enter the stock symbol of the company to analyze:\n')
@@ -827,3 +865,7 @@ print mysales
 print '\n\n'
 mycashflow = mystock.dollars_cf ()
 print mycashflow
+mycap = mystock.dollars_cap ()
+print mycap
+myfcf = mystock.dollars_fcf ()
+print myfcf
