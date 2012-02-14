@@ -60,6 +60,21 @@ def string_to_float (list_local):
             item3 = None
         list1.append (item3)
     return list1
+    
+# Converts a row of strings into integers
+# Input: 1-D list of strings
+# Output: 1-D list of floating point numbers
+def string_to_int (list_local):
+    list1 = []
+    for item in list_local:
+        item1 = item
+        item2 = item1.replace (',', '')
+        try:
+            item3 = int (item2)
+        except:
+            item3 = None
+        list1.append (item3)
+    return list1
 
 # This defines the class CSVfile (filename).
 # Input: name of csv file
@@ -112,6 +127,7 @@ class Stock:
         list3 = list2 [2:] # Excludes the next 2 rows of the stock data file
         return list3
 
+    # Purpose: extracts the specific category, general category, and sign (+/-) for each line item
     # Input: 2-D list from data function
     # Output: 2-D list (3 columns)
     # First column: specific codes
@@ -141,6 +157,7 @@ class Stock:
         finallist = zip (finallist)
         return finallist
 
+    # Purpose: obtain the specific category for each line item
     # Input: 2-D list of strings and integers from lineitem_codes
     # Output: 1-D list
     def lineitem_spec (self):
@@ -148,14 +165,16 @@ class Stock:
         locallist = column_data (column_data (list1, 0), 0) # Excludes the next two rows
         return locallist
     
+    # Purpose: obtain the +/- sign for each line item
     # Input: 2-D list of strings and integers from lineitem_codes
     # Output: 1-D array of numbers
     def lineitem_signs (self):
         list1 = self.lineitem_codes () # Excludes the top row
         list2 = column_data (column_data (list1, 0), 1) # Excludes the next two rows
-        list3 = string_to_float (list2)
+        list3 = string_to_int (list2)
         return list3
         
+    # Purpose: obtain the general category for each line item
     # Input: 2-D list of strings and integers from lineitem_codes
     # Output: 1-D list    
     def lineitem_gen (self):
@@ -206,6 +225,7 @@ class Stock:
             list3 = [0 for i in list2]
         return list3
 
+    # Purpose: obtain the number of line items
     # Input: 1-D data list from lineitem_figures function
     # Output: integer (number of rows in lineitem_figures)
     def num_lineitems (self):
@@ -213,6 +233,7 @@ class Stock:
 		local_num = len (list1)
 		return local_num
 	
+	# Purpose: obtain the number of years of data
 	# Input: 1-D data list from years function
     # Output: integer (number of rows in lineitem_figures)
     def num_years (self):
@@ -220,6 +241,7 @@ class Stock:
 		local_num = len (list1)
 		return local_num
 
+    # Purpose: obtain the financial figures in numbers to be used for computation
     # Input: 2-D data list from data function
     # Output: 2-D list of numbers (excluding the top row and first two columns)
     # Note also the reversal, which puts the most recent year last in the sequence
@@ -242,50 +264,566 @@ class Stock:
             line2 = string_to_float (line1)
             list3.append (line2)
         # list3 = list2 converted to floating point numbers
-        return list3    
-		
-    # Input: 1-D data list from years function
-    # Output: 1-D data list of liquid assets
-    def liquid_plus (self):
+        return list3
+        
+    # Obtain the list of line items for a given combination of general category and sign
+    # Input: 1-D data lists from lineitem_gen function and lineitem_signs
+    # Output: 1-D list of line numbers
+    def lineitem_index (self, gen_seek, sign_seek):
         list1 = self.lineitem_gen ()
-        gen1 = self.lineitem_gen ()
-        figures1 = self.lineitem_figures ()
-        unitplus1 = self.unit_plus()
+        list2 = self.lineitem_signs ()
+        list3 = []
+        # Row number = r + 1
+		# First row: r = 0
+		# Last row: r = total number of rows - 1
+        r_max_data = len (list1) -1
+        r_min_data = 0
+        for r in xrange (r_min_data, r_max_data):
+            if list1 [r] == gen_seek:
+                if list2 [r] == sign_seek:
+                    list3.append (r)
+        return list3
+        
+    # Obtain the list of titles for the line items of a given general category and sign
+    # Inputs: 1-D lists
+    # Output: 1-D list
+    def lineitem_cat_titles (self, gen_seek, sign_seek):
+        list1 = self.lineitem_index (gen_seek, sign_seek)
+        list2 = self.lineitem_titles ()
+        list3 = []
+        for item in list1:
+            list3.append (list2 [item])
+        return list3
+
+    # Obtain the list of specific categories for the line items of a given general category and sign
+    # Inputs: 1-D lists
+    # Output: 1-D list	
+    def lineitem_cat_spec (self, gen_seek, sign_seek):
+        list1 = self.lineitem_index (gen_seek, sign_seek)
+        list2 = self.lineitem_spec ()
+        list3 = []
+        for item in list1:
+            list3.append (list2 [item])
+        return list3
+        
+    # Obtain the figures for the line items of a given general category and sign
+    # Inputs: 1-D lists
+    # Output: 2-D list
+    def lineitem_cat_figures (self, gen_seek, sign_seek):
+        list1 = self.lineitem_index (gen_seek, sign_seek)
+        list2 = self.lineitem_figures ()
+        list3 = []
+        for item in list1:
+            list3.append (list2 [item])
+        return list3
+    
+    # Obtain the total figures for a given general category and sign
+    # NOTE: These figures are in NOMINAL units, not dollars.
+    # Inputs: 1-D lists, 2-D list
+    # Output: 1-D list
+    def lineitem_cat_total (self, gen_seek, sign_seek):
+        list1 = self.lineitem_cat_figures (gen_seek, sign_seek)
+        list2 = []
+        n_rows = len (list1)
+        n_cols = num_of_columns (list1)
         r_min = 0
-        r_max = self.num_years () - 1
-        yr_min = 0 
-        yr_max = self.num_years () - 1
-        liq_list = []
+        r_max = n_rows - 1
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            local_total = 0
+            r = r_min
+            while r <= r_max:
+                try:
+                    local_total = local_total + list1 [r][c]
+                except:
+                    local_total = None
+                r = r + 1
+            list2.append (local_total)
+            c = c + 1
+        return list2
         
-        #for yr in xrange (yr_min, yr_max):
-            #liq_local = 0
-            #for r in xrange (r_min, r_max):
-                #if gen1 [r] == 'liq':
-                    #try:
-                        #liq_local = liq_local + unitplus1 [r] * figures1 [r][yr]
-                    #except:
-                        #liq_local = None
-            #liq_list.append (liq_local)
-        #return liq_list
+    def liqplus_titles (self):
+        list1 = self.lineitem_cat_titles ('liq', 1)
+        return list1
         
+    def liqplus_spec (self):
+        list1 = self.lineitem_cat_spec ('liq', 1)
+        return list1
+    
+    def liqplus (self):
+        list1 = self.lineitem_cat_total ('liq', 1)
+        return list1
+    
+    def liqminus_titles (self):
+        list1 = self.lineitem_cat_titles ('liq', -1)
+        return list1
+        
+    def liqminus_spec (self):
+        list1 = self.lineitem_cat_spec ('liq', -1)
+        return list1
+    
+    def liqminus (self):
+        list1 = self.lineitem_cat_total ('liq', -1)
+        return list1
+    
+    # Liquid assets ($)
+    def dollars_liq (self):
+        list_unplus  = self.unit_plus ()
+        list_unminus = self.unit_minus ()
+        list_liqplus = self.liqplus ()
+        list_liqminus = self.liqminus ()
+        list1 = []
+        n_cols = len (list_liqplus)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list_unplus [c] * list_liqplus [c] - list_unminus [c] * list_liqminus [c]
+            except:
+                try:
+                    dollars = list_unplus [c] * list_liqplus [c]
+                except:
+                    dollars = None
+            list1.append (dollars)
+            c = c + 1
+        return list1
+        
+    def liabplus_titles (self):
+        list1 = self.lineitem_cat_titles ('liab', 1)
+        return list1
+        
+    def liabplus_spec (self):
+        list1 = self.lineitem_cat_spec ('liab', 1)
+        return list1
+    
+    def liabplus (self):
+        list1 = self.lineitem_cat_total ('liab', 1)
+        return list1
+    
+    def liabminus_titles (self):
+        list1 = self.lineitem_cat_titles ('liab', -1)
+        return list1
+        
+    def liabminus_spec (self):
+        list1 = self.lineitem_cat_spec ('liab', -1)
+        return list1
+    
+    def liabminus (self):
+        list1 = self.lineitem_cat_total ('liab', -1)
+        return list1
+        
+    # Nonconvertible liabilities ($)        
+    def dollars_liab (self):
+        list_unplus  = self.unit_plus ()
+        list_unminus = self.unit_minus ()
+        list_quantplus = self.liabplus ()
+        list_quantminus = self.liabminus ()
+        list1 = []
+        n_cols = len (list_quantplus)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list_unplus [c] * list_quantplus [c] - list_unminus [c] * list_quantminus [c]
+            except:
+                try:
+                    dollars = list_unplus [c] * list_quantplus [c]
+                except:
+                    dollars = None
+            list1.append (dollars)
+            c = c + 1
+        return list1
+        
+    # Net liquid assets, convertibles as shares ($)
+    def dollars_netliq_nc (self):
+        list_liq = self.dollars_liq ()
+        list_liab = self.dollars_liab ()
+        list1 = []
+        n_cols = len (list_liq)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list_liq [c] - list_liab [c]
+            except:
+                dollars = None
+            list1.append (dollars)
+            c = c + 1
+        return list1
+
+    def liabc_titles (self):
+        list1 = self.lineitem_cat_titles ('liabc', 1)
+        return list1
+        
+    def liabc_spec (self):
+        list1 = self.lineitem_cat_spec ('liabc', 1)
+        return list1
+    
+    def liabc (self):
+        list1 = self.lineitem_cat_total ('liabc', 1)
+        return list1
+    
+    # Convertible liabilities ($)
+    def dollars_liabc (self):
+        list_quantplus = self.liabc ()
+        list_unplus = self.unit_plus ()
+        list1 = []
+        n_cols = len (list_unplus)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list_unplus [c] * list_quantplus [c]
+            except:
+                dollars = 0    
+            list1.append (dollars)
+            c = c + 1
+        return list1
+        
+    # Net liquidity, convertibles as debt ($)
+    def dollars_netliq_conv (self):
+        list_netliq = self.dollars_netliq_nc ()
+        list_liabc = self.dollars_liabc ()
+        list1 = []
+        n_cols = len (list_netliq)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list_netliq [c] - list_liabc [c]
+            except:
+                dollars = None
+            list1.append (dollars)
+            c = c + 1
+        return list1
+        
+    def shares_titles (self):
+        list1 = self.lineitem_cat_titles ('shares', 1)
+        return list1
+        
+    def shares_spec (self):
+        list1 = self.lineitem_cat_spec ('shares', 1)
+        return list1
+    
+    def shares_nc (self):
+        list1 = self.lineitem_cat_total ('shares', 1)
+        return list1
+
+    def shares_conv_titles (self):
+        list1 = self.lineitem_cat_titles ('sharesc', 1)
+        return list1
+        
+    def shares_conv_spec (self):
+        list1 = self.lineitem_cat_spec ('sharesc', 1)
+        return list1
+        
+    # Convertible shares, 0 if not listed
+    def shares_conv (self):
+        list1 = self.lineitem_cat_total ('sharesc', 1)
+        list2 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            conv = list1 [c]
+            if (conv == None):
+                conv = 0
+            list2.append (conv)
+            c = c + 1
+        return list2
+        
+    # Total shares, split adjusted, convertibles as debt
+    def shares_adj_nc (self):
+        list1 = self.shares_nc ()
+        list2 = self.split_f ()
+        list3 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                local_shares = list1 [c] * list2 [c]
+            except:
+                local_shares = None
+            list3.append (local_shares)
+            c = c + 1
+        return list3
+        
+    # Total shares, split adjusted, convertibles as shares
+    def shares_adj_conv (self):
+        list1 = self.shares_nc ()
+        list2 = self.shares_conv ()
+        list3 = self.split_f ()
+        list4 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                local_shares = (list1 [c] + list2 [c]) * list3 [c]
+            except:
+                try:
+                    local_shares = (list1 [c]) * list3 [c]
+                except:
+                    local_shares = None
+            list4.append (local_shares)
+            c = c + 1
+        return list4
+		
+    def ppecplus_titles (self):
+        list1 = self.lineitem_cat_titles ('ppec', 1)
+        return list1
+        
+    def ppecplus_spec (self):
+        list1 = self.lineitem_cat_spec ('ppec', 1)
+        return list1
+    
+    def ppecplus (self):
+        list1 = self.lineitem_cat_total ('ppec', 1)
+        return list1
+    
+    def ppecminus_titles (self):
+        list1 = self.lineitem_cat_titles ('ppec', -1)
+        return list1
+        
+    def ppecminus_spec (self):
+        list1 = self.lineitem_cat_spec ('ppec', -1)
+        return list1
+    
+    def ppecminus (self):
+        list1 = self.lineitem_cat_total ('ppec', -1)
+        return list1
+
+    # Plant/property/equipment capital ($)
+    def dollars_ppec (self):
+        list_unplus  = self.unit_plus ()
+        list_unminus = self.unit_minus ()
+        list_quantplus = self.ppecplus ()
+        list_quantminus = self.ppecminus ()
+        list1 = []
+        n_cols = len (list_quantplus)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list_unplus [c] * list_quantplus [c] - list_unminus [c] * list_quantminus [c]
+            except:
+                try:
+                    dollars = list_unplus [c] * list_quantplus [c]
+                except:
+                    dollars = None
+            list1.append (dollars)
+            c = c + 1
+        return list1
+        
+    def salesplus_titles (self):
+        list1 = self.lineitem_cat_titles ('rev', 1)
+        return list1
+        
+    def salesplus_spec (self):
+        list1 = self.lineitem_cat_spec ('rev', 1)
+        return list1
+    
+    def salesplus (self):
+        list1 = self.lineitem_cat_total ('rev', 1)
+        return list1
+    
+    def salesminus_titles (self):
+        list1 = self.lineitem_cat_titles ('rev', -1)
+        return list1
+        
+    def salesminus_spec (self):
+        list1 = self.lineitem_cat_spec ('rev', -1)
+        return list1
+    
+    def salesminus (self):
+        list1 = self.lineitem_cat_total ('rev', -1)
+        return list1
+        
+    # Net revenues ($)
+    def dollars_sales (self):
+        list_unplus  = self.unit_plus ()
+        list_unminus = self.unit_minus ()
+        list_quantplus = self.salesplus ()
+        list_quantminus = self.salesminus ()
+        list1 = []
+        n_cols = len (list_quantplus)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list_unplus [c] * list_quantplus [c] - list_unminus [c] * list_quantminus [c]
+            except:
+                try:
+                    dollars = list_unplus [c] * list_quantplus [c]
+                except:
+                    dollars = None
+            list1.append (dollars)
+            c = c + 1
+        return list1
+
+    def exp_plus_titles (self):
+        list1 = self.lineitem_cat_titles ('exp', 1)
+        return list1
+        
+    def exp_plus_spec (self):
+        list1 = self.lineitem_cat_spec ('exp', 1)
+        return list1
+    
+    def exp_plus (self):
+        list1 = self.lineitem_cat_total ('exp', 1)
+        return list1
+    
+    def exp_minus_titles (self):
+        list1 = self.lineitem_cat_titles ('exp', -1)
+        return list1
+        
+    def exp_minus_spec (self):
+        list1 = self.lineitem_cat_spec ('exp', -1)
+        return list1
+    
+    def exp_minus (self):
+        list1 = self.lineitem_cat_total ('exp', -1)
+        return list1
+
+    # Expenses ($)
+    def dollars_exp (self):
+        list_unplus  = self.unit_plus ()
+        list_unminus = self.unit_minus ()
+        list_quantplus = self.exp_plus ()
+        list_quantminus = self.exp_minus ()
+        list1 = []
+        n_cols = len (list_quantplus)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list_unplus [c] * list_quantplus [c] - list_unminus [c] * list_quantminus [c]
+            except:
+                try:
+                    dollars = list_unplus [c] * list_quantplus [c]
+                except:
+                    dollars = None
+            list1.append (dollars)
+            c = c + 1
+        return list1
+
+    def cfadj_plus_titles (self):
+        list1 = self.lineitem_cat_titles ('adj', 1)
+        return list1
+        
+    def cfadj_plus_spec (self):
+        list1 = self.lineitem_cat_spec ('adj', 1)
+        return list1
+    
+    def cfadj_plus (self):
+        list1 = self.lineitem_cat_total ('adj', 1)
+        return list1
+    
+    def cfadj_minus_titles (self):
+        list1 = self.lineitem_cat_titles ('adj', -1)
+        return list1
+        
+    def cfadj_minus_spec (self):
+        list1 = self.lineitem_cat_spec ('adj', -1)
+        return list1
+    
+    def cfadj_minus (self):
+        list1 = self.lineitem_cat_total ('adj', -1)
+        return list1
+
+    # Cash flow adjustments ($)
+    def dollars_cfadj (self):
+        list_unplus  = self.unit_plus ()
+        list_unminus = self.unit_minus ()
+        list_quantplus = self.cfadj_plus ()
+        list_quantminus = self.cfadj_minus ()
+        list1 = []
+        n_cols = len (list_quantplus)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list_unplus [c] * list_quantplus [c] - list_unminus [c] * list_quantminus [c]
+            except:
+                try:
+                    dollars = list_unplus [c] * list_quantplus [c]
+                except:
+                    dollars = None
+            list1.append (dollars)
+            c = c + 1
+        return list1
+
+    # Cash flow (dollars)
+    def dollars_cf (self):
+        list1 = self.dollars_sales ()
+        list2 = self.dollars_exp ()
+        list3 = self.dollars_cfadj ()
+        list4 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                dollars = list1[c] - list2 [c] + list3 [c]
+            except:
+                dollars = None
+            list4.append (dollars)
+            c = c + 1
+        return list4
+		
 
 stock_symbol = 'fast'
 # stock_symbol = raw_input ('Enter the stock symbol of the company to analyze:\n')
 mystock = Stock (stock_symbol)
-mydata = mystock.data ()
-mysigns = mystock.lineitem_signs()
-myfigures = mystock.lineitem_figures()
-mysplit = mystock.split_f ()
 
-myunitplus = mystock.unit_plus()
-myunitminus = mystock.unit_minus()
-# print mygen
-print mysigns
-print '\n\n'
-print mysplit
-print '\n\n'
 
 print '\n\n'
-print myunitplus
+myliqplusspec = mystock.liqplus_spec ()
+myliqplustitles = mystock.liqplus_titles ()
+myliqplus = mystock.liqplus ()
+print myliqplusspec, myliqplustitles, myliqplus
+myliqminusspec = mystock.liqminus_spec ()
+myliqminustitles = mystock.liqminus_titles ()
+myliqminus = mystock.liqminus ()
+
+myliqdollars = mystock.dollars_liq ()
+print myliqdollars
+myliabdollars = mystock.dollars_liab ()
+print myliabdollars
+mynetliq = mystock.dollars_netliq_nc ()
+print mynetliq
 print '\n\n'
-print myfigures
+myliabc = mystock.dollars_liabc ()
+print myliabc
+mynetliqc = mystock.dollars_netliq_conv ()
+print mynetliqc
+myshares = mystock.shares_nc ()
+print myshares
+myshares = mystock.shares_adj_nc ()
+print myshares
+myshares = mystock.shares_adj_conv ()
+print myshares
+myppec = mystock.dollars_ppec ()
+print myppec
+print '\n\n'
+mysales = mystock.dollars_sales ()
+print mysales
+print '\n\n'
+mycashflow = mystock.dollars_cf ()
+print mycashflow
