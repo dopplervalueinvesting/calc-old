@@ -75,7 +75,46 @@ def string_to_int (list_local):
             item3 = None
         list1.append (item3)
     return list1
+    
+# Finds the average in a list of numbers
+# Input: 1-D list of floating point numbers
+# Output: floating point number
+def mean (list_local):
+    try:
+        total = float (sum (list_local))
+        n = len (list_local)
+        x = float (total/n)
+    except:
+        x = None
+    return x
 
+# Finds the n_local-element moving average in a list of numbers
+# Input: 1-D list of floating point numbers
+# Output: 1-D list of floating point numbers
+def moving_average (list_local, n_local):
+    list1 = list_local
+    list2 = []
+    n_cols = len (list1)
+    c_min = 0
+    c_max = n_cols - 1
+    c = c_min
+    x_min = 0
+    x_max = n_local - 1
+    while c <= c_max:
+        list3 = []
+        x = x_min
+        while x <= x_max:
+            if c - x < 0:
+                element = None
+            else:
+                element = list1 [c - x]
+            list3.append (element)
+            x = x + 1
+        ave_moving = mean (list3)
+        list2.append (ave_moving)
+        c = c + 1
+    return list2
+        	
 # This defines the class CSVfile (filename).
 # Input: name of csv file
 # Output: 2-D list fed by the input file
@@ -95,9 +134,11 @@ class CSVfile:
 # Input: stock symbol
 # Outputs: 2-D data list fed by the input file and 1-D data lists
 class Stock:
-    def __init__ (self, symbol):
+    def __init__ (self, symbol, n_smooth, price):
         self.symbol = symbol
-
+        self.n_smooth = n_smooth
+        self.price = price
+    
     # Purpose: reads the contents of the financial data file into a 2-D list
     # Input: stock file
     # Output: 2-D data list
@@ -847,10 +888,251 @@ class Stock:
             c = c + 1
         return list3
 
+    # Net liquid assets, convertible = debt, $ per share
+    def psh_netliq_cdebt (self):
+        list1 = self.dollars_netliq_conv ()
+        list2 = self.shares_adj_nc ()
+        list3 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                psh = list1[c] / list2[c]
+            except:
+                psh = None
+            list3.append (psh)
+            c = c + 1
+        return list3
+
+    # Net liquid assets, convertible = shares, $ per share
+    def psh_netliq_cshares (self):
+        list1 = self.dollars_netliq_nc ()
+        list2 = self.shares_adj_conv ()
+        list3 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                psh = list1[c] / list2[c]
+            except:
+                psh = None
+            list3.append (psh)
+            c = c + 1
+        return list3
+        
+    def psh_ppec_cdebt (self):
+        list1 = self.dollars_ppec ()
+        list2 = self.shares_adj_nc ()
+        list3 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                psh = list1[c] / list2[c]
+            except:
+                psh = None
+            list3.append (psh)
+            c = c + 1
+        return list3
+        
+    def psh_ppec_cshares (self):
+        list1 = self.dollars_ppec ()
+        list2 = self.shares_adj_conv ()
+        list3 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                psh = list1[c] / list2[c]
+            except:
+                psh = None
+            list3.append (psh)
+            c = c + 1
+        return list3
+
+    def return_ppe_ave (self):
+        list1 = self.return_ppe ()
+        n = n_ave
+        list2 = moving_average (list1, n)
+        return list2
+        
+    def psh_fcf_smooth_cdebt (self):
+        list1 = self.return_ppe_ave ()
+        list2 = self.psh_ppec_cdebt ()
+        list3 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                if c-1<0:
+                    psh = None
+                else:
+                    psh = list1[c] * list2[c-1]
+            except:
+                psh = None
+            list3.append (psh)
+            c = c + 1
+        return list3
+        
+    def psh_fcf_smooth_cshares (self):
+        list1 = self.return_ppe_ave ()
+        list2 = self.psh_ppec_cshares ()
+        list3 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                if c-1<0:
+                    psh = None
+                else:
+                    psh = list1[c] * list2[c-1]
+            except:
+                psh = None
+            list3.append (psh)
+            c = c + 1
+        return list3
+
+    def psh_intrinsic_cdebt (self):
+        list1 = self.psh_netliq_cdebt ()
+        list2 = self.psh_ppec_cdebt ()
+        list3 = self.return_ppe ()
+        list4 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                if c-1<0:
+                    psh = None
+                else:
+                    psh = list1[c-1] + 10 * list2[c-1] * list3 [c-1]
+            except:
+                psh = None
+            list4.append (psh)
+            c = c + 1
+        return list4
+        
+    def psh_intrinsic_cshares (self):
+        list1 = self.psh_netliq_cshares ()
+        list2 = self.psh_ppec_cshares ()
+        list3 = self.return_ppe ()
+        list4 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                if c-1<0:
+                    psh = None
+                else:
+                    psh = list1[c-1] + 10 * list2[c-1] * list3 [c-1]
+            except:
+                psh = None
+            list4.append (psh)
+            c = c + 1
+        return list4
+
+    def psh_bargain_cdebt (self):
+        list1 = self.psh_netliq_cdebt ()
+        list2 = self.psh_ppec_cdebt ()
+        list3 = self.return_ppe ()
+        list4 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                if c-1<0:
+                    psh = None
+                else:
+                    psh = list1[c-1] + (10/1.5) * list2[c-1] * list3 [c-1]
+            except:
+                psh = None
+            list4.append (psh)
+            c = c + 1
+        return list4
+
+    def psh_bargain_cshares (self):
+        list1 = self.psh_netliq_cshares ()
+        list2 = self.psh_ppec_cshares ()
+        list3 = self.return_ppe ()
+        list4 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                if c-1<0:
+                    psh = None
+                else:
+                    psh = list1[c-1] + (10/1.5) * list2[c-1] * list3 [c-1]
+            except:
+                psh = None
+            list4.append (psh)
+            c = c + 1
+        return list4
+
+    def doppler_pb (self):
+        p = price
+        list1 = self.psh_intrinsic_cdebt ()
+        list2 = self.psh_intrinsic_cshares ()
+        bv1 = list1 [-1]
+        bv2 = list2 [-1]
+        bv = min (bv1, bv2)
+        pb = p/bv
+        return pb
+    
+    def doppler_pe (self):
+        p = price
+        list1 = self.psh_fcf_smooth_cdebt ()
+        list2 = self.psh_fcf_smooth_cshares ()
+        list3 = self.psh_netliq_cdebt ()
+        list4 = self.psh_netliq_cshares ()
+        e1 = list1 [-1]
+        e2 = list2 [-1]
+        p_adj_1 = p - list3 [-1]
+        p_adj_2 = p - list4 [-1]
+        pe1 = p_adj_1 / e1
+        pe2 = p_adj_2 / e2
+        pe = max (pe1, pe2)
+        return pe
+    
+    def doppler_eyld (self):
+        p = price
+        list1 = self.psh_fcf_smooth_cdebt ()
+        list2 = self.psh_fcf_smooth_cshares ()
+        list3 = self.psh_netliq_cdebt ()
+        list4 = self.psh_netliq_cshares ()
+        e1 = list1 [-1]
+        e2 = list2 [-1]
+        p_adj_1 = p - list3 [-1]
+        p_adj_2 = p - list4 [-1]
+        yld1 = e1 / p_adj_1
+        yld2 = e2 / p_adj_2
+        yld = min (yld1, yld2)
+        return yld
 
 stock_symbol = 'fast'
 # stock_symbol = raw_input ('Enter the stock symbol of the company to analyze:\n')
-mystock = Stock (stock_symbol)
+n_ave = int (raw_input ('Enter the number of years of data to use for smoothing:\n'))
+price = float (raw_input ('Enter the current stock price:\n'))
+mystock = Stock (stock_symbol, n_ave, price)
 
 
 print '\n\n'
@@ -893,3 +1175,33 @@ myfcf = mystock.dollars_fcf ()
 print myfcf
 myroe = mystock.return_ppe ()
 print myroe
+my_psh_netliq = mystock.psh_netliq_cdebt ()
+print my_psh_netliq
+my_psh_netliq = mystock.psh_netliq_cshares ()
+print my_psh_netliq
+my_psh_ppec = mystock.psh_ppec_cdebt ()
+print my_psh_ppec
+my_psh_ppec = mystock.psh_ppec_cshares ()
+print my_psh_ppec
+myppeave = mystock.return_ppe_ave ()
+print myppeave
+
+myfcfsmooth = mystock.psh_fcf_smooth_cdebt ()
+print myfcfsmooth
+
+myfcfsmooth = mystock.psh_fcf_smooth_cshares ()
+print myfcfsmooth
+
+myintrinsic = mystock.psh_intrinsic_cdebt ()
+print myintrinsic
+myintrinsic = mystock.psh_intrinsic_cshares ()
+print myintrinsic
+mybargain = mystock.psh_bargain_cdebt()
+print mybargain
+mybargain = mystock.psh_bargain_cshares ()
+print mybargain
+
+my_pb = mystock.doppler_pb ()
+my_pe = mystock.doppler_pe ()
+my_eyld = mystock.doppler_eyld ()
+print my_pb, my_pe, my_eyld
