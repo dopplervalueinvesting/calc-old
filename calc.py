@@ -2,13 +2,13 @@
 
 import os
 import csv
-import numpy
+import datetime
 
 dir_analysis = os.getcwd()
 os.chdir('..')
 dir_doppler = os.getcwd()
 dir_input = dir_doppler + '/input'
-dir_output = dir_doppler + '/output'
+dir_output = dir_doppler + '/temp-output'
 os.chdir(dir_analysis)
 
 # Purpose: extract a given column from a 2-D list
@@ -373,13 +373,13 @@ class Stock:
         c_max = n_cols - 1
         c = c_min
         while c <= c_max:
-            local_total = 0
+            local_total = 0.0
             r = r_min
             while r <= r_max:
                 try:
                     local_total = local_total + list1 [r][c]
                 except:
-                    local_total = None
+                    local_total = local_total
                 r = r + 1
             list2.append (local_total)
             c = c + 1
@@ -574,11 +574,20 @@ class Stock:
         c_max = n_cols - 1
         c = c_min
         while c <= c_max:
-            conv = list1 [c]
-            if (conv == None):
+            try:
+                conv = list1 [c]
+            except:
                 conv = 0
             list2.append (conv)
             c = c + 1
+        if list2 == []:
+            list1 = self.years ()
+            n_cols = len (list1)
+            c_max = n_cols - 1
+            c = c_min
+            while c <= c_max:
+                list2.append (0.0)
+                c = c + 1
         return list2
         
     # Total shares, split adjusted, convertibles as debt
@@ -1128,80 +1137,163 @@ class Stock:
         yld = min (yld1, yld2)
         return yld
 
+# Displays the header row of an HTML table
+def row_header (str_symbol, int_n, float_price):
+    mystock = Stock (str_symbol, int_n, float_price)
+    my_years = mystock.years ()
+    list_year = my_years
+    str_local = ''
+    str_local += '\n<TR>'
+    str_local += '<TD><B>Item</B></TD>'
+    list_year.reverse ()
+    for item in list_year:
+        str_local += '<TD><B>' + item + '</B></TD>'
+    str_local += '\n</TR>'
+    return str_local
+
+# Input: floating point number
+# Output: string
+def row_item (str_title, list_local):
+    str_local = ''
+    str_local += '\n<TR>'
+    str_local += '<TD>' + str_title + '</TD>'
+    list_local.reverse ()
+    for item in list_local:
+        str_local += '<TD>' + format (item, '.2f') + '</TD>'
+    str_local += '\n</TR>'
+    return str_local
+
+
+# Input: floating point number
+# Output: string
+def percent (n_local):
+    try:
+        x = n_local
+        str_local = format (100*x, '.1f') + '%'
+    except:
+        str_local = 'N/A'
+    return str_local
+
+def row_item_percent (str_title, list_local):
+    str_local = ''
+    str_local += '\n<TR>'
+    str_local += '<TD>' + str_title + '</TD>'
+    list_local.reverse ()
+    for item in list_local:
+        str_local += '<TD>' + percent (item) + '</TD>'
+    str_local += '\n</TR>'
+    return str_local
+
+def millions (n_local):
+    try:
+        x = n_local
+        x = x * 1E-6
+        str_local = format (x, '.1f')
+    except:
+        str_local = 'N/A'
+    return str_local
+    
+def row_item_millions (str_title, list_local):
+    str_local = ''
+    str_local += '\n<TR>'
+    str_local += '<TD>' + str_title + '</TD>'
+    list_local.reverse ()
+    for item in list_local:
+        str_local += '<TD>' + millions (item) + '</TD>'
+    str_local += '\n</TR>'
+    return str_local
+
+def output_main (str_symbol, int_n, float_price):
+    mystock = Stock (str_symbol, int_n, float_price)
+    if not (os.path.exists(dir_output)):
+        os.mkdir (dir_output)
+    file_output = dir_output + '/' + str_symbol + '.html'
+    f = open(file_output, 'w')
+    f.write ('<HTML></BODY>\n')
+    
+    f.write ('<H1>' + mystock.name () + '</H1>')
+    now = datetime.datetime.now()
+    f.write ('Date of Report: ' + now.strftime("%Y-%m-%d"))
+    f.write ('\n<BR>Symbol: ' + str_symbol)
+    f.write ('\n<BR>Recent Stock Price: ${0:.2f}'.format (float_price))
+    my_pb = mystock.doppler_pb ()
+    f.write ('\n<BR>Doppler Price/Book Ratio: {0:.2f}'.format (my_pb))
+    my_pe = mystock.doppler_pe ()
+    f.write ('\n<BR>Doppler PE Ratio: {0:.1f}'.format (my_pe))
+    my_eyld = 100*mystock.doppler_eyld ()
+    f.write ('\n<BR>Doppler Earnings Yield: {0:.2f}%'.format (my_eyld))
+    
+    # TABLE OF PER-SHARE DATA
+    f.write ('\n<H3>Per Share Values</H3>')
+    f.write ('\n<TABLE border=1>')
+    f.write (row_header(str_symbol, int_n, float_price))
+    my_intrinsic_cdebt = mystock.psh_intrinsic_cdebt ()
+    
+    
+    
+    f.write ('\n</TABLE border=1>')
+    
+    # TABLE OF PREFORMANCE DATA
+    my_return_ppe = mystock.return_ppe ()
+    my_return_ppe_ave = mystock.return_ppe_ave ()
+    
+    f.write ('\n<H3>Performance</H3>')
+    f.write ('\n<TABLE border=1>')
+    f.write (row_header(str_symbol, int_n, float_price))
+    
+    f.write (row_item_percent ('Return<BR>on PPE', my_return_ppe))
+    
+    f.write (row_item_percent ('Smoothed<BR>Return<BR>on PPE', my_return_ppe_ave))
+    
+    f.write ('\n</TABLE>')
+    
+    # TABLE OF SHARES OUTSTANDING
+    mysplitf = mystock.split_f ()
+    myshares_nc = mystock.shares_nc ()
+    myshares_conv = mystock.shares_conv ()
+    myshares_adj_nc = mystock.shares_adj_nc ()
+    myshares_adj_conv = mystock.shares_adj_conv ()
+    
+    f.write ('\n<H3>Shares Outstanding</H3>')
+    f.write ('\nNOTE: The split factor is in ones.  Everything else is in millions.')
+    f.write ('\n<TABLE border=1>')
+    f.write (row_header(str_symbol, int_n, float_price))
+    f.write (row_item ('Split<BR>Factor', mysplitf))
+    f.write (row_item_millions ('Nominal<BR>Shares<BR>(nonconvertible)', myshares_nc))
+    f.write (row_item_millions ('Nominal<BR>Shares<BR>(convertible)', myshares_conv))
+    f.write (row_item_millions ('Adjusted<BR>Shares<BR>(No Conversions)', myshares_adj_nc))
+    f.write (row_item_millions ('Adjusted<BR>Shares<BR>(With Conversions)', myshares_adj_conv))
+    f.write ('\n</TABLE>')
+    
+    # TABLE OF BALANCE SHEET DATA
+    
+    f.write ('\n<H3>Balance Sheet</H3>')
+    f.write ('\n<TABLE border=1>')
+    
+    # f.write (row_item_millions ('Liquid<BR>Assets', my_return_ppe_ave))
+    
+    f.write ('\n</TABLE border=1>')
+    
+    # TABLE OF PLANT/PROPERTY/EQUIPMENT DATA
+    f.write ('\n<H3>Plant/Property/Equipment Capital</H3>')
+    f.write ('\n<TABLE>')
+    
+    f.write ('\n</TABLE border=1>')
+    
+    # TABLE OF CASH FLOW DATA
+    f.write ('\n<H3>Cash Flow</H3>')
+    f.write ('\n<TABLE>')
+    
+    f.write ('\n</TABLE border=1>')
+    f.write ('\n</BODY></HTML>')
+    f.close()
+
 stock_symbol = 'fast'
 # stock_symbol = raw_input ('Enter the stock symbol of the company to analyze:\n')
 n_ave = int (raw_input ('Enter the number of years of data to use for smoothing:\n'))
 price = float (raw_input ('Enter the current stock price:\n'))
 mystock = Stock (stock_symbol, n_ave, price)
 
+output_main (stock_symbol, n_ave, price)
 
-print '\n\n'
-myliqplusspec = mystock.liqplus_spec ()
-myliqplustitles = mystock.liqplus_titles ()
-myliqplus = mystock.liqplus ()
-print myliqplusspec, myliqplustitles, myliqplus
-myliqminusspec = mystock.liqminus_spec ()
-myliqminustitles = mystock.liqminus_titles ()
-myliqminus = mystock.liqminus ()
-
-myliqdollars = mystock.dollars_liq ()
-print myliqdollars
-myliabdollars = mystock.dollars_liab ()
-print myliabdollars
-mynetliq = mystock.dollars_netliq_nc ()
-print mynetliq
-print '\n\n'
-myliabc = mystock.dollars_liabc ()
-print myliabc
-mynetliqc = mystock.dollars_netliq_conv ()
-print mynetliqc
-myshares = mystock.shares_nc ()
-print myshares
-myshares = mystock.shares_adj_nc ()
-print myshares
-myshares = mystock.shares_adj_conv ()
-print myshares
-myppec = mystock.dollars_ppec ()
-print myppec
-print '\n\n'
-mysales = mystock.dollars_sales ()
-print mysales
-print '\n\n'
-mycashflow = mystock.dollars_cf ()
-print mycashflow
-mycap = mystock.dollars_cap ()
-print mycap
-myfcf = mystock.dollars_fcf ()
-print myfcf
-myroe = mystock.return_ppe ()
-print myroe
-my_psh_netliq = mystock.psh_netliq_cdebt ()
-print my_psh_netliq
-my_psh_netliq = mystock.psh_netliq_cshares ()
-print my_psh_netliq
-my_psh_ppec = mystock.psh_ppec_cdebt ()
-print my_psh_ppec
-my_psh_ppec = mystock.psh_ppec_cshares ()
-print my_psh_ppec
-myppeave = mystock.return_ppe_ave ()
-print myppeave
-
-myfcfsmooth = mystock.psh_fcf_smooth_cdebt ()
-print myfcfsmooth
-
-myfcfsmooth = mystock.psh_fcf_smooth_cshares ()
-print myfcfsmooth
-
-myintrinsic = mystock.psh_intrinsic_cdebt ()
-print myintrinsic
-myintrinsic = mystock.psh_intrinsic_cshares ()
-print myintrinsic
-mybargain = mystock.psh_bargain_cdebt()
-print mybargain
-mybargain = mystock.psh_bargain_cshares ()
-print mybargain
-
-my_pb = mystock.doppler_pb ()
-my_pe = mystock.doppler_pe ()
-my_eyld = mystock.doppler_eyld ()
-print my_pb, my_pe, my_eyld
+print mystock.shares_conv ()
