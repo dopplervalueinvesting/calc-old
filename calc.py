@@ -114,7 +114,54 @@ def moving_average (list_local, n_local):
         list2.append (ave_moving)
         c = c + 1
     return list2
-        	
+    
+# Changes the "None" elements in a list to zeros
+# Input: 1-D list
+# Output: 1-D list
+def none_to_zero (list_input):
+    list1 = list_input
+    list2 = []
+    for item in list1:
+        if item == None:
+            list2.append (0.0)
+        else:
+            list2.append (item)
+    return list2
+        
+    # Combine two 1-D lists of equal length into two lists
+    # This is needed for convertible debt.
+    # The first row of data is based on the assumption that convertibles remain as debt.
+    # The second row is based on the assumption that convertibles become shares.
+    # In the end, we will use the assumption that produces the LOWER estimate of intrinsic value.
+def combine2lists (list1, list2):
+    list3 = []
+    list3.append (list1)
+    list3.append (list2)
+    return list3
+
+
+# Inputs: 2-D list consisting of two 1-D lists of equal length
+# and a 1-D list used for selecting from the two lists
+# Output: 1-D list
+def select_option_conv (list1, list2):
+    # list1 [0]: consists of the list of values assuming convertibles = debt
+    # list1 [1]: consists of the list of values assuming convertibles = shares
+    # list2: selects 0 or 1
+    # list3: output
+    list3 = []
+    n_cols = len (list2)
+    c_min = 0
+    c_max = n_cols - 1
+    c = c_min
+    while c<=c_max:
+        try:
+            element = list1 [list2 [c]] [c]
+        except:
+            element = None
+        list3.append (element)
+        c = c + 1
+    return list3
+            	
 # This defines the class CSVfile (filename).
 # Input: name of csv file
 # Output: 2-D list fed by the input file
@@ -231,7 +278,37 @@ class Stock:
         list1 = self.data ()
         list2 = row_rev (list1, 0) # Removes the first two columns, then reverses
         return list2
-        
+    
+    # Creates a list of zeros
+    # Input: years list
+    # Output: list of zeros with the same length as the years list
+    def list_zero (self):
+        list1 = self.years ()
+        list2 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            list2.append (0.0)
+            c = c + 1
+        return list2
+
+    # Creates a list of None
+    # Input: years list
+    # Output: list of None with the same length as the years list
+    def list_none (self):
+        list1 = self.years ()
+        list2 = []
+        n_cols = len (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            list2.append (None)
+            c = c + 1
+        return list2    
+    
     # Purpose: extract the split factor for each year
     # Input: 2-D data list from data function
     # Output: 1-D array of numbers (2nd row, excluding the first two columns)
@@ -362,6 +439,10 @@ class Stock:
     # NOTE: These figures are in NOMINAL units, not dollars.
     # Inputs: 1-D lists, 2-D list
     # Output: 1-D list
+    # Obtain the total figures for a given general category and sign
+    # NOTE: These figures are in NOMINAL units, not dollars.
+    # Inputs: 1-D lists, 2-D list
+    # Output: 1-D list
     def lineitem_cat_total (self, gen_seek, sign_seek):
         list1 = self.lineitem_cat_figures (gen_seek, sign_seek)
         list2 = []
@@ -379,12 +460,14 @@ class Stock:
                 try:
                     local_total = local_total + list1 [r][c]
                 except:
-                    local_total = local_total
+                    local_total = None
                 r = r + 1
             list2.append (local_total)
             c = c + 1
+        if list2 ==[]:
+            list2 = self.list_none ()
         return list2
-        
+          
     def liqplus_titles (self):
         list1 = self.lineitem_cat_titles ('liq', 1)
         return list1
@@ -456,8 +539,8 @@ class Stock:
         list1 = self.lineitem_cat_total ('liab', -1)
         return list1
         
-    # Nonconvertible liabilities ($)        
-    def dollars_liab (self):
+    # Nonconvertible liabilities only, assume convertibles become shares ($)        
+    def dollars_liab_cshares (self):
         list_unplus  = self.unit_plus ()
         list_unminus = self.unit_minus ()
         list_quantplus = self.liabplus ()
@@ -480,9 +563,9 @@ class Stock:
         return list1
         
     # Net liquid assets, convertibles as shares ($)
-    def dollars_netliq_nc (self):
+    def dollars_netliq_cshares (self):
         list_liq = self.dollars_liq ()
-        list_liab = self.dollars_liab ()
+        list_liab = self.dollars_liab_cshares ()
         list1 = []
         n_cols = len (list_liq)
         c_min = 0
@@ -507,10 +590,11 @@ class Stock:
     
     def liabc (self):
         list1 = self.lineitem_cat_total ('liabc', 1)
-        return list1
+        list2 = none_to_zero (list1)
+        return list2
     
     # Convertible liabilities ($)
-    def dollars_liabc (self):
+    def dollars_liab_conv (self):
         list_quantplus = self.liabc ()
         list_unplus = self.unit_plus ()
         list1 = []
@@ -528,9 +612,9 @@ class Stock:
         return list1
         
     # Net liquidity, convertibles as debt ($)
-    def dollars_netliq_conv (self):
-        list_netliq = self.dollars_netliq_nc ()
-        list_liabc = self.dollars_liabc ()
+    def dollars_netliq_cdebt (self):
+        list_netliq = self.dollars_netliq_cshares ()
+        list_liabc = self.dollars_liab_conv ()
         list1 = []
         n_cols = len (list_netliq)
         c_min = 0
@@ -544,7 +628,16 @@ class Stock:
             list1.append (dollars)
             c = c + 1
         return list1
-        
+     
+    # Net liquidity
+    # Row 1: Assume convertibles remain as debt.
+    # Row 2: Assume convertibles are converted into shares.
+    def dollars_netliq_2d (self):
+		list1 = self.dollars_netliq_cdebt ()
+		list2 = self.dollars_netliq_cshares ()
+		list3 = combine2lists (list1, list2)
+		return list3
+                
     def shares_titles (self):
         list1 = self.lineitem_cat_titles ('shares', 1)
         return list1
@@ -553,7 +646,8 @@ class Stock:
         list1 = self.lineitem_cat_spec ('shares', 1)
         return list1
     
-    def shares_nc (self):
+    # Nonconvertible shares, total # of shares if none are converted
+    def shares_cdebt (self):
         list1 = self.lineitem_cat_total ('shares', 1)
         return list1
 
@@ -568,31 +662,12 @@ class Stock:
     # Convertible shares, 0 if not listed
     def shares_conv (self):
         list1 = self.lineitem_cat_total ('sharesc', 1)
-        list2 = []
-        n_cols = len (list1)
-        c_min = 0
-        c_max = n_cols - 1
-        c = c_min
-        while c <= c_max:
-            try:
-                conv = list1 [c]
-            except:
-                conv = 0
-            list2.append (conv)
-            c = c + 1
-        if list2 == []:
-            list1 = self.years ()
-            n_cols = len (list1)
-            c_max = n_cols - 1
-            c = c_min
-            while c <= c_max:
-                list2.append (0.0)
-                c = c + 1
+        list2 = none_to_zero (list1)
         return list2
         
     # Total shares, split adjusted, convertibles as debt
-    def shares_adj_nc (self):
-        list1 = self.shares_nc ()
+    def shares_adj_cdebt (self):
+        list1 = self.shares_cdebt ()
         list2 = self.split_f ()
         list3 = []
         n_cols = len (list1)
@@ -609,8 +684,8 @@ class Stock:
         return list3
         
     # Total shares, split adjusted, convertibles as shares
-    def shares_adj_conv (self):
-        list1 = self.shares_nc ()
+    def shares_adj_cshares (self):
+        list1 = self.shares_cdebt ()
         list2 = self.shares_conv ()
         list3 = self.split_f ()
         list4 = []
@@ -622,13 +697,18 @@ class Stock:
             try:
                 local_shares = (list1 [c] + list2 [c]) * list3 [c]
             except:
-                try:
-                    local_shares = (list1 [c]) * list3 [c]
-                except:
-                    local_shares = None
+                local_shares = None
             list4.append (local_shares)
             c = c + 1
         return list4
+        
+    def shares_adj_2d (self):
+        list1 = self.shares_adj_cdebt ()
+        list2 = self.shares_adj_cshares ()
+        list3 = []
+        list3.append (list1)
+        list3.append (list2)
+        return list3
 		
     def ppecplus_titles (self):
         list1 = self.lineitem_cat_titles ('ppec', 1)
@@ -899,8 +979,8 @@ class Stock:
 
     # Net liquid assets, convertible = debt, $ per share
     def psh_netliq_cdebt (self):
-        list1 = self.dollars_netliq_conv ()
-        list2 = self.shares_adj_nc ()
+        list1 = self.dollars_netliq_cdebt ()
+        list2 = self.shares_adj_cdebt ()
         list3 = []
         n_cols = len (list1)
         c_min = 0
@@ -917,8 +997,8 @@ class Stock:
 
     # Net liquid assets, convertible = shares, $ per share
     def psh_netliq_cshares (self):
-        list1 = self.dollars_netliq_nc ()
-        list2 = self.shares_adj_conv ()
+        list1 = self.dollars_netliq_cshares ()
+        list2 = self.shares_adj_cshares ()
         list3 = []
         n_cols = len (list1)
         c_min = 0
@@ -933,9 +1013,18 @@ class Stock:
             c = c + 1
         return list3
         
+    # Net liquid assets, convertible = debt, convertible = shares
+    def psh_netliq_2d (self):
+        list1 = self.psh_netliq_cdebt ()
+        list2 = self.psh_netliq_cshares ()
+        list3 = []
+        list3.append (list1)
+        list3.append (list2)
+        return list3
+    
     def psh_ppec_cdebt (self):
         list1 = self.dollars_ppec ()
-        list2 = self.shares_adj_nc ()
+        list2 = self.shares_adj_cdebt ()
         list3 = []
         n_cols = len (list1)
         c_min = 0
@@ -952,7 +1041,7 @@ class Stock:
         
     def psh_ppec_cshares (self):
         list1 = self.dollars_ppec ()
-        list2 = self.shares_adj_conv ()
+        list2 = self.shares_adj_cshares ()
         list3 = []
         n_cols = len (list1)
         c_min = 0
@@ -967,6 +1056,20 @@ class Stock:
             c = c + 1
         return list3
 
+    def psh_ppec_2d (self):
+        list1 = self.psh_ppec_cdebt ()
+        list2 = self.psh_ppec_cshares ()
+        list3 = []
+        list3.append (list1)
+        list3.append (list2)
+        return list3    
+        
+    def psh_ppec (self):
+        list1 = self.psh_ppec_2d ()
+        list2 = self.psh_select ()
+        list3 = select_option_conv (list1, list2)
+        return list3
+    
     def return_ppe_ave (self):
         list1 = self.return_ppe ()
         n = n_ave
@@ -1012,6 +1115,14 @@ class Stock:
             list3.append (psh)
             c = c + 1
         return list3
+    
+    def psh_fcf_smooth_2d (self):
+        list1 = self.psh_fcf_smooth_cdebt ()
+        list2 = self.psh_fcf_smooth_cshares ()
+        list3 = []
+        list3.append (list1)
+        list3.append (list2)
+        return list3
 
     def psh_intrinsic_cdebt (self):
         list1 = self.psh_netliq_cdebt ()
@@ -1055,6 +1166,47 @@ class Stock:
             c = c + 1
         return list4
 
+    def psh_intrinsic_2d (self):
+        list1 = self.psh_intrinsic_cdebt ()
+        list2 = self.psh_intrinsic_cshares ()
+        list3 = []
+        list3.append (list1)
+        list3.append (list2)
+        return list3
+    
+    # Selects whether to treat convertibles as debt or shares
+    # The assumption resulting in the LOWER intrinsic value is selected
+    def psh_select (self):
+        list1 = self.psh_intrinsic_2d ()
+        list2 = []
+        n_cols = num_of_columns (list1)
+        c_min = 0
+        c_max = n_cols - 1
+        c = c_min
+        while c <= c_max:
+            try:
+                if list1 [0][c] < list1 [1][c]:
+                    element = 0
+                else:
+                    element = 1			
+            except:
+                element = None
+            list2.append (element)
+            c = c + 1
+        return list2
+    
+    def psh_intrinsic (self):
+        list1 = self.psh_intrinsic_2d ()
+        list2 = self.psh_select ()
+        list3 = select_option_conv (list1, list2)
+        return list3
+        
+    def psh_netliq (self):
+        list1 = self.psh_netliq_2d ()
+        list2 = self.psh_select ()
+        list3 = select_option_conv (list1, list2)
+        return list3
+    
     def psh_bargain_cdebt (self):
         list1 = self.psh_netliq_cdebt ()
         list2 = self.psh_ppec_cdebt ()
@@ -1163,6 +1315,43 @@ def row_item (str_title, list_local):
     str_local += '\n</TR>'
     return str_local
 
+# Input: floating point number
+# Output: string
+def psh2 (n_local):
+    try:
+        x = n_local
+        str_local = format (x, '.2f')
+    except:
+        str_local = 'N/A'
+    return str_local
+    
+def row_item_psh2 (str_title, list_local):
+    str_local = ''
+    str_local += '\n<TR>'
+    str_local += '<TD>' + str_title + '</TD>'
+    list_local.reverse ()
+    for item in list_local:
+        str_local += '<TD>' + psh2 (item) + '</TD>'
+    str_local += '\n</TR>'
+    return str_local
+
+def psh3 (n_local):
+    try:
+        x = n_local
+        str_local = format (x, '.3f')
+    except:
+        str_local = 'N/A'
+    return str_local
+    
+def row_item_psh3 (str_title, list_local):
+    str_local = ''
+    str_local += '\n<TR>'
+    str_local += '<TD>' + str_title + '</TD>'
+    list_local.reverse ()
+    for item in list_local:
+        str_local += '<TD>' + psh3 (item) + '</TD>'
+    str_local += '\n</TR>'
+    return str_local
 
 # Input: floating point number
 # Output: string
@@ -1227,13 +1416,25 @@ def output_main (str_symbol, int_n, float_price):
     f.write ('\n<H3>Per Share Values</H3>')
     f.write ('\n<TABLE border=1>')
     f.write (row_header(str_symbol, int_n, float_price))
-    my_intrinsic_cdebt = mystock.psh_intrinsic_cdebt ()
+    
+    my_intrinsic = mystock.psh_intrinsic ()
+    f.write (row_item_psh2 ('Intrinsic Value', my_intrinsic))
+    
+    my_netliq = mystock.psh_netliq ()
+    f.write (row_item_psh2 ('Net Liquidity', my_netliq))
     
     
+    my_fcf_cdebt = mystock.psh_fcf_smooth_cdebt ()
+    f.write (row_item_psh3 ('Smoothed<BR>Free Cash Flow<BR>(No Conversions)', my_fcf_cdebt))
+    my_fcf_cshares = mystock.psh_fcf_smooth_cshares ()
+    f.write (row_item_psh3 ('Smoothed<BR>Free Cash Flow<BR>(With Conversions)', my_fcf_cshares))
     
-    f.write ('\n</TABLE border=1>')
+    my_psh_ppec = mystock.psh_ppec ()
+    f.write (row_item_psh2 ('Plant/Property/Equipment', my_psh_ppec))
     
-    # TABLE OF PREFORMANCE DATA
+    f.write ('\n</TABLE border>')
+    
+    # TABLE OF PERFORMANCE DATA
     my_return_ppe = mystock.return_ppe ()
     my_return_ppe_ave = mystock.return_ppe_ave ()
     
@@ -1249,10 +1450,10 @@ def output_main (str_symbol, int_n, float_price):
     
     # TABLE OF SHARES OUTSTANDING
     mysplitf = mystock.split_f ()
-    myshares_nc = mystock.shares_nc ()
+    myshares_nc = mystock.shares_cdebt ()
     myshares_conv = mystock.shares_conv ()
-    myshares_adj_nc = mystock.shares_adj_nc ()
-    myshares_adj_conv = mystock.shares_adj_conv ()
+    myshares_adj_nc = mystock.shares_adj_cdebt ()
+    myshares_adj_conv = mystock.shares_adj_cshares ()
     
     f.write ('\n<H3>Shares Outstanding</H3>')
     f.write ('\nNOTE: The split factor is in ones.  Everything else is in millions.')
@@ -1266,25 +1467,50 @@ def output_main (str_symbol, int_n, float_price):
     f.write ('\n</TABLE>')
     
     # TABLE OF BALANCE SHEET DATA
+    myliquid = mystock.dollars_liq ()
+    myliab = mystock.dollars_liab_cshares ()
+    myliabc = mystock.dollars_liab_conv ()
+    mynetliqnc = mystock.dollars_netliq_cshares ()
+    mynetliqconv = mystock.dollars_netliq_cdebt ()
+    f.write ('\n<H3>Balance Sheet (in millions of dollars)</H3>')
     
-    f.write ('\n<H3>Balance Sheet</H3>')
     f.write ('\n<TABLE border=1>')
-    
-    # f.write (row_item_millions ('Liquid<BR>Assets', my_return_ppe_ave))
+    f.write (row_header(str_symbol, int_n, float_price))
+    f.write (row_item_millions ('Liquid Assets', myliquid))
+    f.write (row_item_millions ('Liabilities -<BR>Nonconvertible', myliab))
+    f.write (row_item_millions ('Liabilities -<BR>Convertible', myliabc))
+    f.write (row_item_millions ('Net Liquid Assets -<BR>No Conversions', mynetliqnc))
+    f.write (row_item_millions ('Net Liquid Assets -<BR>With Conversions', mynetliqconv))
     
     f.write ('\n</TABLE border=1>')
     
     # TABLE OF PLANT/PROPERTY/EQUIPMENT DATA
-    f.write ('\n<H3>Plant/Property/Equipment Capital</H3>')
-    f.write ('\n<TABLE>')
-    
+    myppec = mystock.dollars_ppec ()
+    mycap = mystock.dollars_cap ()
+    f.write ('\n<H3>Plant/Property/Equipment Capital (in millions of dollars)</H3>')
+    f.write ('\n<TABLE border=1>')
+    f.write (row_header(str_symbol, int_n, float_price))
+    f.write (row_item_millions ('Plant/Property/Equipment<BR>Capital', myppec))
+    f.write (row_item_millions ('Normalized<BR>Capital<BR>Spending', mycap))
     f.write ('\n</TABLE border=1>')
     
     # TABLE OF CASH FLOW DATA
-    f.write ('\n<H3>Cash Flow</H3>')
-    f.write ('\n<TABLE>')
-    
-    f.write ('\n</TABLE border=1>')
+    mysales = mystock.dollars_sales ()
+    myexp = mystock.dollars_exp ()
+    mycfadj = mystock.dollars_cfadj ()
+    mycf = mystock.dollars_cf ()
+    mycap = mystock.dollars_cap ()
+    myfcf = mystock.dollars_fcf ()
+    f.write ('\n<H3>Cash Flow Data (in millions of dollars)</H3>')
+    f.write ('\n<TABLE border=1>')
+    f.write (row_header(str_symbol, int_n, float_price))
+    f.write (row_item_millions ('Net Revenue', mysales))
+    f.write (row_item_millions ('Expenses', myexp))
+    f.write (row_item_millions ('Non-Cash<BR>Adjustments', mycfadj))
+    f.write (row_item_millions ('Cash Flow', mycf))
+    f.write (row_item_millions ('Normalized<BR>Capital<BR>Spending', mycap))
+    f.write (row_item_millions ('Free Cash Flow', myfcf))
+    f.write ('\n</TABLE>')
     f.write ('\n</BODY></HTML>')
     f.close()
 
@@ -1294,6 +1520,35 @@ n_ave = int (raw_input ('Enter the number of years of data to use for smoothing:
 price = float (raw_input ('Enter the current stock price:\n'))
 mystock = Stock (stock_symbol, n_ave, price)
 
+
+
+my_dollars_netliq_cdebt = mystock.dollars_netliq_cdebt ()
+my_dollars_netliq_cshares = mystock.dollars_netliq_cshares ()
+my_dollars_netliq_2d = mystock.dollars_netliq_2d ()
+
+my_shares_adj_2d = mystock.shares_adj_2d ()
+myselect = mystock.psh_select ()
+
+print '\n\n\n'
+print my_dollars_netliq_cdebt
+print my_dollars_netliq_cshares
+print my_dollars_netliq_2d
+print myselect
+print '\n\n'
+my_netliq = mystock.psh_netliq ()
+print my_netliq
+print '\n\n\n\n'
+
+
+    
+list1 = mystock.psh_netliq_cdebt ()
+list2 = mystock.psh_netliq_cshares ()
+list3 = []
+list3.append (list1)
+list3.append (list2)
+print list1
+print list2
+print list3
 output_main (stock_symbol, n_ave, price)
 
-print mystock.shares_conv ()
+
