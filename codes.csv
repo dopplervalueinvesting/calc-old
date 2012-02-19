@@ -22,7 +22,7 @@
 21,"liab4-",-1,"liab","SUBTRACT - pension obligation"
 22,"liab5+",1,"liab","Postretirement Benefit Obligation"
 23,"liab5-",-1,"liab","SUBTRACT - postretirement benefit obligation"
-24,"liabc+",1,"liabc","Convertible Liabilities"
+24,"liabc",1,"liabc","Convertible Liabilities"
 25,"sh-unc",1,"shares","Unclassified Shares"
 26,"sh-a",1,"shares","Class A Shares"
 27,"sh-b",1,"shares","Class B Shares"
