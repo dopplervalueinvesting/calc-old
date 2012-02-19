@@ -1123,11 +1123,17 @@ class Stock:
         list3.append (list1)
         list3.append (list2)
         return list3
+        
+    def psh_fcf (self):
+        list1 = self.psh_fcf_smooth_2d ()
+        list2 = self.psh_select ()
+        list3 = select_option_conv (list1, list2)
+        return list3
 
     def psh_intrinsic_cdebt (self):
         list1 = self.psh_netliq_cdebt ()
         list2 = self.psh_ppec_cdebt ()
-        list3 = self.return_ppe ()
+        list3 = self.return_ppe_ave ()
         list4 = []
         n_cols = len (list1)
         c_min = 0
@@ -1148,7 +1154,7 @@ class Stock:
     def psh_intrinsic_cshares (self):
         list1 = self.psh_netliq_cshares ()
         list2 = self.psh_ppec_cshares ()
-        list3 = self.return_ppe ()
+        list3 = self.return_ppe_ave ()
         list4 = []
         n_cols = len (list1)
         c_min = 0
@@ -1249,44 +1255,38 @@ class Stock:
             c = c + 1
         return list4
 
+    def doppler_book (self):
+        list1 = self.psh_intrinsic ()
+        bv = list1 [-1]
+        return bv
+    
     def doppler_pb (self):
         p = price
-        list1 = self.psh_intrinsic_cdebt ()
-        list2 = self.psh_intrinsic_cshares ()
-        bv1 = list1 [-1]
-        bv2 = list2 [-1]
-        bv = min (bv1, bv2)
+        bv = self.doppler_book ()
         pb = p/bv
         return pb
     
-    def doppler_pe (self):
+    def doppler_price_adj (self):
         p = price
-        list1 = self.psh_fcf_smooth_cdebt ()
-        list2 = self.psh_fcf_smooth_cshares ()
-        list3 = self.psh_netliq_cdebt ()
-        list4 = self.psh_netliq_cshares ()
-        e1 = list1 [-1]
-        e2 = list2 [-1]
-        p_adj_1 = p - list3 [-1]
-        p_adj_2 = p - list4 [-1]
-        pe1 = p_adj_1 / e1
-        pe2 = p_adj_2 / e2
-        pe = max (pe1, pe2)
+        list1 = self.psh_netliq ()
+        netliq = list1 [-1]
+        price_adj = p - netliq
+        return price_adj
+        
+    def doppler_earnings (self):
+        list1 = self.psh_fcf ()
+        fcf = list1 [-1]
+        return fcf
+    
+    def doppler_pe (self):
+        p_adj = self.doppler_price_adj ()
+        fcf = self.doppler_earnings ()
+        pe = p_adj / fcf
         return pe
     
     def doppler_eyld (self):
-        p = price
-        list1 = self.psh_fcf_smooth_cdebt ()
-        list2 = self.psh_fcf_smooth_cshares ()
-        list3 = self.psh_netliq_cdebt ()
-        list4 = self.psh_netliq_cshares ()
-        e1 = list1 [-1]
-        e2 = list2 [-1]
-        p_adj_1 = p - list3 [-1]
-        p_adj_2 = p - list4 [-1]
-        yld1 = e1 / p_adj_1
-        yld2 = e2 / p_adj_2
-        yld = min (yld1, yld2)
+        pe = self.doppler_pe ()
+        yld = 1/pe
         return yld
 
 # Displays the header row of an HTML table
@@ -1403,14 +1403,26 @@ def output_main (str_symbol, int_n, float_price):
     f.write ('<H1>' + mystock.name () + '</H1>')
     now = datetime.datetime.now()
     f.write ('Date of Report: ' + now.strftime("%Y-%m-%d"))
-    f.write ('\n<BR>Symbol: ' + str_symbol)
-    f.write ('\n<BR>Recent Stock Price: ${0:.2f}'.format (float_price))
+    f.write ('\n<BR>Symbol: ' + str_symbol.upper())
+    
+    # TABLE OF VALUATION DATA
     my_pb = mystock.doppler_pb ()
-    f.write ('\n<BR>Doppler Price/Book Ratio: {0:.2f}'.format (my_pb))
     my_pe = mystock.doppler_pe ()
-    f.write ('\n<BR>Doppler PE Ratio: {0:.1f}'.format (my_pe))
     my_eyld = 100*mystock.doppler_eyld ()
-    f.write ('\n<BR>Doppler Earnings Yield: {0:.2f}%'.format (my_eyld))
+    my_bv = mystock.doppler_book ()
+    my_price_adj = mystock.doppler_price_adj ()
+    my_fcf = mystock.doppler_earnings ()
+    
+    f.write ('\n<H3>Current Valuation Data</H3>')
+    f.write ('\n<TABLE border=1>')
+    f.write ('\n<TR><TD>Recent Stock Price</TD><TD>${0:.2f} per share</TD></TR>'.format (float_price))
+    f.write ('\n<TR><TD>Doppler Price/Book Ratio</TD><TD>{0:.2f}</TD></TR>'.format (my_pb))
+    f.write ('\n<TR><TD>Doppler PE Ratio</TD><TD>{0:.1f}</TD></TR>'.format (my_pe))
+    f.write ('\n<TR><TD>Doppler Earnings Yield</TD><TD>{0:.2f}%</TD></TR>'.format (my_eyld))
+    f.write ('\n<TR><TD>Doppler Book Value</TD><TD>${0:.2f} per share</TD></TR>'.format (my_bv))
+    f.write ('\n<TR><TD>Price (Adjusted for Net Liquidity)</TD><TD>${0:.2f} per share</TD></TR>'.format (my_price_adj))
+    f.write ('\n<TR><TD>Doppler Earnings</TD><TD>${0:.3f} per share</TD></TR>'.format (my_fcf))
+    f.write ('\n</TABLE border>') 
     
     # TABLE OF PER-SHARE DATA
     f.write ('\n<H3>Per Share Values</H3>')
@@ -1423,11 +1435,12 @@ def output_main (str_symbol, int_n, float_price):
     my_netliq = mystock.psh_netliq ()
     f.write (row_item_psh2 ('Net Liquidity', my_netliq))
     
-    
-    my_fcf_cdebt = mystock.psh_fcf_smooth_cdebt ()
-    f.write (row_item_psh3 ('Smoothed<BR>Free Cash Flow<BR>(No Conversions)', my_fcf_cdebt))
-    my_fcf_cshares = mystock.psh_fcf_smooth_cshares ()
-    f.write (row_item_psh3 ('Smoothed<BR>Free Cash Flow<BR>(With Conversions)', my_fcf_cshares))
+    my_fcf = mystock.psh_fcf ()
+    f.write (row_item_psh3 ('Smoothed Free Cash Flow', my_fcf))
+    # my_fcf_cdebt = mystock.psh_fcf_smooth_cdebt ()
+    # f.write (row_item_psh3 ('Smoothed<BR>Free Cash Flow<BR>(No Conversions)', my_fcf_cdebt))
+    # my_fcf_cshares = mystock.psh_fcf_smooth_cshares ()
+    # f.write (row_item_psh3 ('Smoothed<BR>Free Cash Flow<BR>(With Conversions)', my_fcf_cshares))
     
     my_psh_ppec = mystock.psh_ppec ()
     f.write (row_item_psh2 ('Plant/Property/Equipment', my_psh_ppec))
@@ -1514,41 +1527,12 @@ def output_main (str_symbol, int_n, float_price):
     f.write ('\n</BODY></HTML>')
     f.close()
 
-stock_symbol = 'fast'
-# stock_symbol = raw_input ('Enter the stock symbol of the company to analyze:\n')
+stock_symbol = raw_input ('Enter the stock symbol of the company to analyze:\n')
+stock_symbol = stock_symbol.lower()
 n_ave = int (raw_input ('Enter the number of years of data to use for smoothing:\n'))
 price = float (raw_input ('Enter the current stock price:\n'))
 mystock = Stock (stock_symbol, n_ave, price)
 
-
-
-my_dollars_netliq_cdebt = mystock.dollars_netliq_cdebt ()
-my_dollars_netliq_cshares = mystock.dollars_netliq_cshares ()
-my_dollars_netliq_2d = mystock.dollars_netliq_2d ()
-
-my_shares_adj_2d = mystock.shares_adj_2d ()
-myselect = mystock.psh_select ()
-
-print '\n\n\n'
-print my_dollars_netliq_cdebt
-print my_dollars_netliq_cshares
-print my_dollars_netliq_2d
-print myselect
-print '\n\n'
-my_netliq = mystock.psh_netliq ()
-print my_netliq
-print '\n\n\n\n'
-
-
-    
-list1 = mystock.psh_netliq_cdebt ()
-list2 = mystock.psh_netliq_cshares ()
-list3 = []
-list3.append (list1)
-list3.append (list2)
-print list1
-print list2
-print list3
 output_main (stock_symbol, n_ave, price)
 
 
