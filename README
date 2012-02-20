@@ -1,0 +1,1 @@
+To run the Doppler Value Investing calculator, cd your way into the "calc" directory and enter the command "python calc.py".  Outputs are automatically saved in the "temp-output" directory.
