@@ -36,7 +36,7 @@
 35,"dil-b",1,"shares","other possible class B shares"
 36,"dil-oth",1,"shares","other possible shares of other classes"
 37,"tr",-1,"shares","treasury shares"
-38,"sh-unc-con",1,"shares","convertible unclassified shares"
+38,"sh-unc-con",1,"sharesc","convertible unclassified shares"
 39,"sh-a-con",1,"sharesc","convertible A shares"
 40,"sh-b-con",1,"sharesc","convertible B shares"
 41,"sh-oth-con",1,"sharesc","convertibles of other classes of common shares"

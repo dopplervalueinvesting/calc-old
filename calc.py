@@ -372,9 +372,11 @@ class Stock:
         r_max_data = len (list1) -1
         r_min_data = 3 # top row = year, 2nd row = split factor, 3rd row = unit (plus)
         list2 = []
-        for r_data in xrange (r_min_data, r_max_data):
-            line1 = row_rev(list1, r_data) # Reverses, cuts off first two columns
+        r = r_min_data
+        while r <= r_max_data:
+            line1 = row_rev(list1, r) # Reverses, cuts off first two columns
             list2.append (line1)
+            r = r + 1
         # list2 = data minus first two columns and first three rows
         list3 = []
         for line in list2:
@@ -396,10 +398,12 @@ class Stock:
 		# Last row: r = total number of rows - 1
         r_max_data = len (list1) -1
         r_min_data = 0
-        for r in xrange (r_min_data, r_max_data):
+        r = r_min_data
+        while r <= r_max_data:
             if list1 [r] == gen_seek:
                 if list2 [r] == sign_seek:
-                    list3.append (r)
+					list3.append (r)
+            r = r + 1
         return list3
         
     # Obtain the list of titles for the line items of a given general category and sign
